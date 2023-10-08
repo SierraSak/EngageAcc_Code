@@ -1,10 +1,8 @@
 #![feature(lazy_cell, ptr_sub_ptr)]
 use unity::prelude::*;
-use engage::*;
 
-#[repr(C)]
 #[unity::class("App", "AccessoryData")]
-pub struct app_accessorydata {
+pub struct AccessoryData {
     structbase: [u8; 0x10],
     pub aid: &'static Il2CppString,
     pub name: &'static Il2CppString,
@@ -32,27 +30,25 @@ pub struct app_accessorydata {
     // ...
 }
 
-#[repr(C)]
 #[unity::class("App", "UnitAccessoryList")]
-pub struct unit_accessory_list {
-    pub unit_accessory_array: &'static mut Il2CppArray<&'static Il2CppObject<unit_accessory>>,
+pub struct UnitAccessoryList {
+    pub unit_accessory_array: &'static mut Il2CppArray<&'static UnitAccessory>,
 }
 
-#[repr(C)]
 #[unity::class("App", "UnitAccessory")]
-pub struct unit_accessory {
+pub struct UnitAccessory {
     pub index: i32,
 }
 
 
 #[unity::hook("App", "UnitAccessoryList", "get_count")]
-pub fn app_unitaccessorylist_getcount(this: &mut Il2CppObject<unit_accessory_list>, method_info: OptionalMethod,)-> i32{
+pub fn app_unitaccessorylist_getcount(_this: &mut UnitAccessoryList, _method_info: OptionalMethod,)-> i32{
     return 15;
 }
 
 
 #[unity::hook("App", "AccessoryData", "OnBuild")]
-pub fn onbuild_accessory_data_hook(this: &mut Il2CppObject<app_accessorydata>, method_info: OptionalMethod,)
+pub fn onbuild_accessory_data_hook(this: &mut AccessoryData, method_info: OptionalMethod,)
 {
     call_original!(this, method_info);
     if this.mask > 8
@@ -146,30 +142,30 @@ pub fn onbuild_accessory_data_hook(this: &mut Il2CppObject<app_accessorydata>, m
 
 
 #[unity::hook("App", "UnitAccessoryList", ".ctor")]
-pub fn unitaccessorylist_ctor_hook(this: &mut Il2CppObject<unit_accessory_list>, method_info: OptionalMethod,)
+pub fn unitaccessorylist_ctor_hook(this: &mut UnitAccessoryList, method_info: OptionalMethod,)
 {
     call_original!(this, method_info);
     
-    this.unit_accessory_array[0] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[1] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[2] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[3] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[4] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[5] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[6] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[7] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[8] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[9] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[10] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[11] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[12] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[13] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[14] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap();
-    this.unit_accessory_array[15] = unit_accessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[0] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[1] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[2] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[3] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[4] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[5] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[6] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[7] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[8] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[9] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[10] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[11] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[12] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[13] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    this.unit_accessory_array[14] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap();
+    this.unit_accessory_array[15] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
 }
 
 #[unity::hook("App", "AccessoryShopChangeRoot", "OnSelectMenuItem")]
-pub fn onselectmenuitem_accessory_data_hook(this: &Il2CppObject<()>, accessory_data: &mut Il2CppObject<app_accessorydata>, method_info: OptionalMethod,)
+pub fn onselectmenuitem_accessory_data_hook(this: &(), accessory_data: &mut AccessoryData, method_info: OptionalMethod)
 {
     call_original!(this, accessory_data, method_info)
 }
