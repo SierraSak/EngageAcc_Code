@@ -30,9 +30,28 @@ pub struct AccessoryData {
     // ...
 }
 
+// Due to how you use the enum, let's not use these for now
+#[repr(i32)]
+pub enum AccessoryDataMasks {
+    Body = 1,
+    Head = 2,
+    Face = 4,
+    Back = 8,
+    // Expand here
+}
+
+// Due to how you use the enum, let's not use these for now
+#[repr(i32)]
+pub enum AccessoryDataKinds {
+    Body = 0,
+    Head = 1,
+    Face = 2,
+    Back = 3,
+}
+
 #[unity::class("App", "UnitAccessoryList")]
 pub struct UnitAccessoryList {
-    pub unit_accessory_array: &'static mut Il2CppArray<&'static UnitAccessory>,
+    pub unit_accessory_array: &'static mut Il2CppArray<&'static mut UnitAccessory>,
 }
 
 #[unity::class("App", "UnitAccessory")]
@@ -42,48 +61,55 @@ pub struct UnitAccessory {
 
 
 #[unity::hook("App", "UnitAccessoryList", "get_count")]
-pub fn app_unitaccessorylist_getcount(_this: &mut UnitAccessoryList, _method_info: OptionalMethod,)-> i32{
+pub fn app_unitaccessorylist_getcount(_this: &mut UnitAccessoryList, _method_info: OptionalMethod) -> i32 {
     return 15;
 }
 
 
 #[unity::hook("App", "AccessoryData", "OnBuild")]
-pub fn onbuild_accessory_data_hook(this: &mut AccessoryData, method_info: OptionalMethod,)
-{
+pub fn onbuild_accessory_data_hook(this: &mut AccessoryData, method_info: OptionalMethod) {
     call_original!(this, method_info);
+
     if this.mask > 8
     {
         match this.mask{
-            16=>this.kind = 4,
-            32=>this.kind = 5,
-            64=>this.kind = 6,
-            128=>this.kind = 7,
-            256=>this.kind = 8,
-            512=>this.kind = 9,
-            1024=>this.kind = 10,
-            2048=>this.kind = 11,
-            4096=>this.kind = 12,
-            8192=>this.kind = 13,
-            16384=>this.kind = 14,
-            32768=>this.kind = 15,
-            _=>this.kind = 1,
+            16 => this.kind = 4,
+            32 => this.kind = 5,
+            64 => this.kind = 6,
+            128 => this.kind = 7,
+            256 => this.kind = 8,
+            512 => this.kind = 9,
+            1024 => this.kind = 10,
+            2048 => this.kind = 11,
+            4096 => this.kind = 12,
+            8192 => this.kind = 13,
+            16384 => this.kind = 14,
+            32768 => this.kind = 15,
+            _=> this.kind = 1,
         }
     }
 }
 
 //Currently not compiling
 //cannot borrow data in dereference of `Array<&unity::prelude::Il2CppObject<unit_accessory>>` as mutable
-//#[unity::hook("App", "UnitAccessoryList", "Clear")]
-//pub fn clear_UnitAccessoryList_hook(this: &mut Il2CppObject<unit_accessory_list>, method_info: OptionalMethod,)
-//{
-//    //call_original!(this, method_info);
-//    let mut i = 0;
-//    while i < this.unit_accessory_array.len()
-//    {
-//        this.unit_accessory_array[i].index = 0;
-//        i += 1;
-//    }
-//}
+
+// You did not specify in UnitAccessoryList that the content of the array can be mut(ated), so Rust stopped you
+#[unity::hook("App", "UnitAccessoryList", "Clear")]
+pub fn clear_UnitAccessoryList_hook(this: &mut UnitAccessoryList, method_info: OptionalMethod,)
+{
+   //call_original!(this, method_info);
+
+    // OLD
+    //    let mut i = 0;
+    //    while i < this.unit_accessory_array.len()
+    //    {
+    //        this.unit_accessory_array[i].index = 0;
+    //        i += 1;
+    //    }
+
+    // NEW
+    this.unit_accessory_array.iter_mut().for_each(|acc| acc.index = 0);
+}
 
 //#[skyline::hook(offset = 0x1F62090)]
 //pub fn add_UnitAccessoryList_hook(this: &mut Il2CppObject<unit_accessory_list>, accessory: &mut Il2CppObject<app_accessorydata>, index: i32, method_info: OptionalMethod,)
@@ -160,7 +186,7 @@ pub fn onselectmenuitem_accessory_data_hook(this: &(), accessory_data: &mut Acce
 
 #[skyline::main(name = "TestProject")]
 pub fn main() {
-    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, app_unitaccessorylist_getcount);
+    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook);
     skyline::patching::Patch::in_text(0x01f61c00).bytes(&[0x01, 0x02, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d70).bytes(&[0xDF, 0x3E, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d8c).bytes(&[0xDF, 0x42, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
