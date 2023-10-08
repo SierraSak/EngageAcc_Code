@@ -1,10 +1,19 @@
 #![feature(lazy_cell, ptr_sub_ptr)]
+use std::cmp::Ordering;
+
 use engage::gamedata::{StructDataGeneric, StructData, StructDataStaticFields};
 use unity::prelude::*;
 
+#[unity::class("App", "StructBase")]
+pub struct StructBase {
+    index: i32,
+    hash: i32,
+    key: &'static Il2CppString,
+}
+
 #[unity::class("App", "AccessoryData")]
 pub struct AccessoryData {
-    structbase: [u8; 0x10],
+    pub parent: StructBaseFields,
     pub aid: &'static Il2CppString,
     pub name: &'static Il2CppString,
     pub help: &'static Il2CppString,
@@ -112,37 +121,82 @@ pub fn clear_UnitAccessoryList_hook(this: &mut UnitAccessoryList, method_info: O
     this.unit_accessory_array.iter_mut().for_each(|acc| acc.index = 0);
 }
 
-//#[skyline::hook(offset = 0x1F62090)]
-//pub fn add_UnitAccessoryList_hook(this: &mut Il2CppObject<unit_accessory_list>, accessory: &mut Il2CppObject<app_accessorydata>, index: i32, method_info: OptionalMethod,)
-//{
-    //let mut i = 0;
-    //let mut equipped_acc_index = 0;
-    //let mut acc_check;
-    //while i < this.unit_accessory_array.len()
-    //{
-        //equipped_acc_index = this.unit_accessory_array[i].index;
-        //acc_check = TryGet Accessory XML data from acc_index
-        //if acc_check != 0 and accessory.mask == acc_check.mask
-        //{
-            //this.unit_accessory_array[i].index = 0;
-        //}
-    //}
-    //i = 0;
-    //if index < 0
-    //{
-        //equipped_acc_index = this.unit_accessory_array[i].index;
-        //if equipped_acc_index == 0
-        //{
-            //this.unit_accessory_array[i].index = accessory.super.super.super.Index;
-        //}
-        //i += 1;
-    //}
-    //else if index < this.unit_accessory_array.len()
-    //{
-        //this.unit_accessory_array[index].index = accessory.super.super.super.Index;
-        //i += 1;
-    //}
-//}
+#[skyline::hook(offset = 0x1F62090)]
+pub fn add_UnitAccessoryList_hook(this: &mut UnitAccessoryList, accessory: &mut AccessoryData, index: usize, method_info: OptionalMethod,)
+{
+    // OLD
+
+    // let mut i = 0;
+    // let mut equipped_acc_index = 0;
+    // let mut acc_check = 0;
+
+    // while i < this.unit_accessory_array.len()
+    // {
+    //     equipped_acc_index = this.unit_accessory_array[i].index;
+    //     acc_check = TryGet Accessory XML data from acc_index
+    //     if acc_check != 0 and accessory.mask == acc_check.mask
+    //     {
+    //         this.unit_accessory_array[i].index = 0;
+    //     }
+    // }
+
+    // NEW
+
+    let structdata: &Il2CppClass = get_generic_class!(StructDataGeneric<AccessoryData>).unwrap();
+    let accessory_table = Il2CppObject::<StructData>::from_class(structdata).unwrap();
+    let accessories = accessory_table.get_class().get_static_fields::<StructDataStaticFields<AccessoryData>>();
+
+    this.unit_accessory_array
+        .iter_mut() 
+        .for_each(|curr_acc| { // Go through every entry in the array.
+            // Grab the AccessoryData at that index in the XML
+            if let Some (found) = accessories.s_list.list.items.get(curr_acc.index as usize) {
+                // If an entry was found, check if the mask is similar and set the index to 0 if it is
+                if accessory.mask == found.mask {
+                    curr_acc.index = 0;
+                }
+            }
+        });
+
+    // OLD
+
+
+    // i = 0;
+
+    // if index < 0
+    // {
+    //     equipped_acc_index = this.unit_accessory_array[i].index;
+    //     if equipped_acc_index == 0
+    //     {
+    //         this.unit_accessory_array[i].index = accessory.super.super.super.Index;
+    //     }
+    //     i += 1;
+    // }
+    // else if index < this.unit_accessory_array.len()
+    // {
+    //     this.unit_accessory_array[index].index = accessory.super.super.super.Index;
+    //     i += 1;
+    // }
+
+    // NEW
+
+    // Checks if index is within 0 and the array's len
+    if (0..this.unit_accessory_array.len()).contains(&index) {
+        // We can safely index in the array here because we already confirmed that we are within the acceptable indices for the array... I hope
+        this.unit_accessory_array[index].index = accessory.parent.index;
+    } else {
+        // If 0 is less than 0 or beyond the array's length
+        this.unit_accessory_array
+            .iter_mut()
+            .for_each(|item| {
+                // If the index for the current item is 0
+                if item.index == 0 {
+                    // Set it to the index of the accessory we received
+                    item.index = accessory.parent.index;
+                }
+            });
+    }
+}
 
 #[unity::hook("App", "UnitAccessoryList", "IsExist")]
 pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, method_info: OptionalMethod) -> bool
@@ -152,7 +206,7 @@ pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: 
     accessory.is_some_and(|accessory| {
         let structdata: &Il2CppClass = get_generic_class!(StructDataGeneric<AccessoryData>).unwrap();
         let accessory_table = Il2CppObject::<StructData>::from_class(structdata).unwrap();
-        let accessories = accessory_table.get_class().get_static_fields::<StructDataStaticFields<AccessoryData>>().s_list.list.items;
+        let accessories = accessory_table.get_class().get_static_fields::<StructDataStaticFields<AccessoryData>>();
 
         // Looks for the AID of the provided accessory in the XML and return the index of the matching entry
         this.unit_accessory_array
@@ -160,7 +214,7 @@ pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: 
             .any(|curr_acc| { // Confirms if any of the items in the array fulfills the condition.
                 // Grab the AccessoryData at that index in the XML if it's present, and if it is, compare the AIDs.
                 // Return false if the index is out of bounds OR the AIDs don't match
-                accessories.get(curr_acc.index as usize).is_some_and(|item| {
+                accessories.s_list.list.items.get(curr_acc.index as usize).is_some_and(|item| {
                     item.aid.get_string().unwrap() == accessory.aid.get_string().unwrap()
                 })
             })
@@ -186,7 +240,7 @@ pub fn onselectmenuitem_accessory_data_hook(this: &(), accessory_data: &mut Acce
 
 #[skyline::main(name = "TestProject")]
 pub fn main() {
-    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook, unitaccessorylist_is_exist_hook);
+    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook, unitaccessorylist_is_exist_hook, add_UnitAccessoryList_hook);
     skyline::patching::Patch::in_text(0x01f61c00).bytes(&[0x01, 0x02, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d70).bytes(&[0xDF, 0x3E, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d8c).bytes(&[0xDF, 0x42, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
