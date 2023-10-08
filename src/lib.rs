@@ -1,5 +1,4 @@
 #![feature(lazy_cell, ptr_sub_ptr)]
-use std::cmp::Ordering;
 
 use engage::gamedata::{StructDataGeneric, StructData, StructDataStaticFields};
 use unity::prelude::*;
@@ -105,7 +104,7 @@ pub fn onbuild_accessory_data_hook(this: &mut AccessoryData, method_info: Option
 
 // You did not specify in UnitAccessoryList that the content of the array can be mut(ated), so Rust stopped you
 #[unity::hook("App", "UnitAccessoryList", "Clear")]
-pub fn clear_UnitAccessoryList_hook(this: &mut UnitAccessoryList, method_info: OptionalMethod,)
+pub fn clear_unitaccessorylist_hook(this: &mut UnitAccessoryList, _method_info: OptionalMethod,)
 {
    //call_original!(this, method_info);
 
@@ -122,7 +121,7 @@ pub fn clear_UnitAccessoryList_hook(this: &mut UnitAccessoryList, method_info: O
 }
 
 #[skyline::hook(offset = 0x1F62090)]
-pub fn add_UnitAccessoryList_hook(this: &mut UnitAccessoryList, accessory: &mut AccessoryData, index: usize, method_info: OptionalMethod,)
+pub fn add_unitaccessorylist_hook(this: &mut UnitAccessoryList, accessory: &mut AccessoryData, index: usize, _method_info: OptionalMethod,)
 {
     // OLD
 
@@ -199,7 +198,7 @@ pub fn add_UnitAccessoryList_hook(this: &mut UnitAccessoryList, accessory: &mut 
 }
 
 #[unity::hook("App", "UnitAccessoryList", "IsExist")]
-pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, method_info: OptionalMethod) -> bool
+pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, _method_info: OptionalMethod) -> bool
 {
     // This is your old "if accessory == 0x0 {}". In the context of talking with C, Rust allows you to use Option<> on a pointer to signify that it could be null.
     // That gives you plenty of fancy ways to check for null
@@ -240,7 +239,7 @@ pub fn onselectmenuitem_accessory_data_hook(this: &(), accessory_data: &mut Acce
 
 #[skyline::main(name = "TestProject")]
 pub fn main() {
-    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook, unitaccessorylist_is_exist_hook, add_UnitAccessoryList_hook);
+    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, app_unitaccessorylist_getcount, clear_unitaccessorylist_hook, unitaccessorylist_is_exist_hook, add_unitaccessorylist_hook);
     skyline::patching::Patch::in_text(0x01f61c00).bytes(&[0x01, 0x02, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d70).bytes(&[0xDF, 0x3E, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d8c).bytes(&[0xDF, 0x42, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
