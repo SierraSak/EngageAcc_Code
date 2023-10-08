@@ -146,22 +146,10 @@ pub fn unitaccessorylist_ctor_hook(this: &mut UnitAccessoryList, method_info: Op
 {
     call_original!(this, method_info);
     
-    this.unit_accessory_array[0] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[1] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[2] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[3] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[4] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[5] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[6] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[7] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[8] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[9] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[10] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[11] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[12] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[13] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
-    this.unit_accessory_array[14] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap();
-    this.unit_accessory_array[15] = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    // Il2CppArray can be turned into a slice (https://doc.rust-lang.org/std/primitive.slice.html) and slices can be iterated (https://doc.rust-lang.org/std/iter/trait.Iterator.html) on, so we can just walk through every item in the array and manipulate them
+    this.unit_accessory_array.iter_mut().for_each(|entry| {
+        *entry = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+    });
 }
 
 #[unity::hook("App", "AccessoryShopChangeRoot", "OnSelectMenuItem")]
