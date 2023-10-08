@@ -1,7 +1,15 @@
 #![feature(lazy_cell, ptr_sub_ptr)]
+use std::cmp::Ordering;
 
+use engage::gamedata::{StructDataGeneric, StructData, StructDataStaticFields};
 use unity::prelude::*;
-use engage::gamedata::{StructDataGeneric, StructData, StructBaseFields, StructDataStaticFields};
+
+#[unity::class("App", "StructBase")]
+pub struct StructBase {
+    index: i32,
+    hash: i32,
+    key: &'static Il2CppString,
+}
 
 #[unity::class("App", "AccessoryData")]
 pub struct AccessoryData {
@@ -53,7 +61,7 @@ pub enum AccessoryDataKinds {
 
 #[unity::class("App", "UnitAccessoryList")]
 pub struct UnitAccessoryList {
-    pub unit_accessory_array: &'static mut Il2CppArray<&'static mut UnitAccessory>,
+    pub unit_accessory_array: &'static mut Il2CppArray<Option<&'static mut UnitAccessory>>
 }
 
 #[unity::class("App", "UnitAccessory")]
@@ -62,8 +70,8 @@ pub struct UnitAccessory {
 }
 
 
-#[unity::hook("App", "UnitAccessoryList", "get_count")]
-pub fn app_unitaccessorylist_getcount(_this: &mut UnitAccessoryList, _method_info: OptionalMethod) -> i32 {
+#[unity::hook("App", "UnitAccessoryList", "get_Count")]
+pub fn app_unitaccessorylist_getcount(this: &mut UnitAccessoryList, method_info: OptionalMethod) -> i32 {
     return 15;
 }
 
@@ -97,7 +105,7 @@ pub fn onbuild_accessory_data_hook(this: &mut AccessoryData, method_info: Option
 
 // You did not specify in UnitAccessoryList that the content of the array can be mut(ated), so Rust stopped you
 #[unity::hook("App", "UnitAccessoryList", "Clear")]
-pub fn clear_unitaccessorylist_hook(this: &mut UnitAccessoryList, _method_info: OptionalMethod,)
+pub fn clear_UnitAccessoryList_hook(this: &mut UnitAccessoryList, method_info: OptionalMethod,)
 {
    //call_original!(this, method_info);
 
@@ -110,11 +118,11 @@ pub fn clear_unitaccessorylist_hook(this: &mut UnitAccessoryList, _method_info: 
     //    }
 
     // NEW
-    this.unit_accessory_array.iter_mut().for_each(|acc| acc.index = 0);
+    this.unit_accessory_array.iter_mut().for_each(|acc| acc.as_mut().unwrap().index = 0);
 }
 
 #[skyline::hook(offset = 0x1F62090)]
-pub fn add_unitaccessorylist_hook(this: &mut UnitAccessoryList, accessory: &mut AccessoryData, index: usize, _method_info: OptionalMethod,)
+pub fn add_UnitAccessoryList_hook(this: &mut UnitAccessoryList, accessory: &mut AccessoryData, index: usize, method_info: OptionalMethod,)
 {
     // OLD
 
@@ -142,10 +150,10 @@ pub fn add_unitaccessorylist_hook(this: &mut UnitAccessoryList, accessory: &mut 
         .iter_mut() 
         .for_each(|curr_acc| { // Go through every entry in the array.
             // Grab the AccessoryData at that index in the XML
-            if let Some (found) = accessories.s_list.list.items.get(curr_acc.index as usize) {
+            if let Some (found) = accessories.s_list.list.items.get(curr_acc.as_mut().unwrap().index as usize) {
                 // If an entry was found, check if the mask is similar and set the index to 0 if it is
                 if accessory.mask == found.mask {
-                    curr_acc.index = 0;
+                    curr_acc.as_mut().unwrap().index = 0;
                 }
             }
         });
@@ -175,23 +183,23 @@ pub fn add_unitaccessorylist_hook(this: &mut UnitAccessoryList, accessory: &mut 
     // Checks if index is within 0 and the array's len
     if (0..this.unit_accessory_array.len()).contains(&index) {
         // We can safely index in the array here because we already confirmed that we are within the acceptable indices for the array... I hope
-        this.unit_accessory_array[index].index = accessory.parent.index;
+        this.unit_accessory_array[index].as_mut().unwrap().index = accessory.parent.index;
     } else {
         // If 0 is less than 0 or beyond the array's length
         this.unit_accessory_array
             .iter_mut()
             .for_each(|item| {
                 // If the index for the current item is 0
-                if item.index == 0 {
+                if item.as_mut().unwrap().index == 0 {
                     // Set it to the index of the accessory we received
-                    item.index = accessory.parent.index;
+                    item.as_mut().unwrap().index = accessory.parent.index;
                 }
             });
     }
 }
 
 #[unity::hook("App", "UnitAccessoryList", "IsExist")]
-pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, _method_info: OptionalMethod) -> bool
+pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, method_info: OptionalMethod) -> bool
 {
     // This is your old "if accessory == 0x0 {}". In the context of talking with C, Rust allows you to use Option<> on a pointer to signify that it could be null.
     // That gives you plenty of fancy ways to check for null
@@ -206,7 +214,7 @@ pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: 
             .any(|curr_acc| { // Confirms if any of the items in the array fulfills the condition.
                 // Grab the AccessoryData at that index in the XML if it's present, and if it is, compare the AIDs.
                 // Return false if the index is out of bounds OR the AIDs don't match
-                accessories.s_list.list.items.get(curr_acc.index as usize).is_some_and(|item| {
+                accessories.s_list.list.items.get(curr_acc.as_ref().unwrap().index as usize).is_some_and(|item| {
                     item.aid.get_string().unwrap() == accessory.aid.get_string().unwrap()
                 })
             })
@@ -220,7 +228,7 @@ pub fn unitaccessorylist_ctor_hook(this: &mut UnitAccessoryList, method_info: Op
     
     // Il2CppArray can be turned into a slice (https://doc.rust-lang.org/std/primitive.slice.html) and slices can be iterated (https://doc.rust-lang.org/std/iter/trait.Iterator.html) on, so we can just walk through every item in the array and manipulate them
     this.unit_accessory_array.iter_mut().for_each(|entry| {
-        *entry = UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap(); 
+        *entry = Some(UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap()); 
     });
 }
 
@@ -232,9 +240,48 @@ pub fn onselectmenuitem_accessory_data_hook(this: &(), accessory_data: &mut Acce
 
 #[skyline::main(name = "TestProject")]
 pub fn main() {
-    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, app_unitaccessorylist_getcount, clear_unitaccessorylist_hook, unitaccessorylist_is_exist_hook, add_unitaccessorylist_hook);
+    // Install a panic handler for your plugin, allowing you to customize what to do if there's an issue in your code.
+    std::panic::set_hook(Box::new(|info| {
+        let location = info.location().unwrap();
+
+        // Some magic thing to turn what was provided to the panic into a string. Don't mind it too much.
+        // The message will be stored in the msg variable for you to use.
+        let msg = match info.payload().downcast_ref::<&'static str>() {
+            Some(s) => *s,
+            None => {
+                match info.payload().downcast_ref::<String>() {
+                    Some(s) => &s[..],
+                    None => "Box<Any>",
+                }
+            },
+        };
+
+        // This creates a new String with a message of your choice, writing the location of the panic and its message inside of it.
+        // Note the \0 at the end. This is needed because show_error is a C function and expects a C string.
+        // This is actually just a result of bad old code and shouldn't be necessary most of the time.
+        let err_msg = format!(
+            "Custom plugin has panicked at '{}' with the following message:\n{}\0",
+            location,
+            msg
+        );
+
+        // We call the native Error dialog of the Nintendo Switch with this convenient method.
+        // The error code is set to 69 because we do need a value, while the first message displays in the popup and the second shows up when pressing Details.
+        skyline::error::show_error(
+            69,
+            "Custom plugin has panicked! Please open the details and send a screenshot to the developer, then close the game.\n\0",
+            err_msg.as_str(),
+        );
+    }));
+    
+    
+    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook, unitaccessorylist_is_exist_hook, add_UnitAccessoryList_hook);
     skyline::patching::Patch::in_text(0x01f61c00).bytes(&[0x01, 0x02, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d70).bytes(&[0xDF, 0x3E, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d8c).bytes(&[0xDF, 0x42, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
+
+    //Patch Get_Count
+    //skyline::patching::Patch::in_text(0x01f61b10).bytes(&[0xE0, 0x01, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
+
     //skyline::patching::Patch::in_text(0x027bffcc).bytes(&[0x1F, 0x20, 0x03, 0xD5]).expect("Couldn’t patch that shit for some reasons");
 }
