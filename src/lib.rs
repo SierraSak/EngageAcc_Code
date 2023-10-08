@@ -1,14 +1,7 @@
 #![feature(lazy_cell, ptr_sub_ptr)]
 
-use engage::gamedata::{StructDataGeneric, StructData, StructDataStaticFields};
 use unity::prelude::*;
-
-#[unity::class("App", "StructBase")]
-pub struct StructBase {
-    index: i32,
-    hash: i32,
-    key: &'static Il2CppString,
-}
+use engage::gamedata::{StructDataGeneric, StructData, StructBaseFields, StructDataStaticFields};
 
 #[unity::class("App", "AccessoryData")]
 pub struct AccessoryData {
