@@ -61,7 +61,7 @@ pub enum AccessoryDataKinds {
 
 #[unity::class("App", "UnitAccessoryList")]
 pub struct UnitAccessoryList {
-    pub unit_accessory_array: &'static mut Il2CppArray<Option<&'static mut UnitAccessory>>
+    pub unit_accessory_array: &'static mut Il2CppArray<&'static mut UnitAccessory>
 }
 
 #[unity::class("App", "UnitAccessory")]
@@ -118,84 +118,48 @@ pub fn clear_UnitAccessoryList_hook(this: &mut UnitAccessoryList, method_info: O
     //    }
 
     // NEW
-    this.unit_accessory_array.iter_mut().for_each(|acc| acc.as_mut().unwrap().index = 0);
+    this.unit_accessory_array.iter_mut().for_each(|acc| acc.index = 0);
 }
 
-#[skyline::hook(offset = 0x1F62090)]
-pub fn add_UnitAccessoryList_hook(this: &mut UnitAccessoryList, accessory: &mut AccessoryData, index: usize, method_info: OptionalMethod,)
+#[skyline::hook(offset = 0x1f620a0)]
+pub fn add_UnitAccessoryList_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, index: usize, method_info: OptionalMethod,) -> bool
 {
-    // OLD
+    accessory.is_some_and(|accessory| {
+        let structdata: &Il2CppClass = get_generic_class!(StructDataGeneric<AccessoryData>).unwrap();
+        let accessory_table = Il2CppObject::<StructData>::from_class(structdata).unwrap();
+        let accessories = accessory_table.get_class().get_static_fields::<StructDataStaticFields<AccessoryData>>();
 
-    // let mut i = 0;
-    // let mut equipped_acc_index = 0;
-    // let mut acc_check = 0;
-
-    // while i < this.unit_accessory_array.len()
-    // {
-    //     equipped_acc_index = this.unit_accessory_array[i].index;
-    //     acc_check = TryGet Accessory XML data from acc_index
-    //     if acc_check != 0 and accessory.mask == acc_check.mask
-    //     {
-    //         this.unit_accessory_array[i].index = 0;
-    //     }
-    // }
-
-    // NEW
-
-    let structdata: &Il2CppClass = get_generic_class!(StructDataGeneric<AccessoryData>).unwrap();
-    let accessory_table = Il2CppObject::<StructData>::from_class(structdata).unwrap();
-    let accessories = accessory_table.get_class().get_static_fields::<StructDataStaticFields<AccessoryData>>();
-
-    this.unit_accessory_array
-        .iter_mut() 
-        .for_each(|curr_acc| { // Go through every entry in the array.
-            // Grab the AccessoryData at that index in the XML
-            if let Some (found) = accessories.s_list.list.items.get(curr_acc.as_mut().unwrap().index as usize) {
-                // If an entry was found, check if the mask is similar and set the index to 0 if it is
-                if accessory.mask == found.mask {
-                    curr_acc.as_mut().unwrap().index = 0;
-                }
-            }
-        });
-
-    // OLD
-
-
-    // i = 0;
-
-    // if index < 0
-    // {
-    //     equipped_acc_index = this.unit_accessory_array[i].index;
-    //     if equipped_acc_index == 0
-    //     {
-    //         this.unit_accessory_array[i].index = accessory.super.super.super.Index;
-    //     }
-    //     i += 1;
-    // }
-    // else if index < this.unit_accessory_array.len()
-    // {
-    //     this.unit_accessory_array[index].index = accessory.super.super.super.Index;
-    //     i += 1;
-    // }
-
-    // NEW
-
-    // Checks if index is within 0 and the array's len
-    if (0..this.unit_accessory_array.len()).contains(&index) {
-        // We can safely index in the array here because we already confirmed that we are within the acceptable indices for the array... I hope
-        this.unit_accessory_array[index].as_mut().unwrap().index = accessory.parent.index;
-    } else {
-        // If 0 is less than 0 or beyond the array's length
         this.unit_accessory_array
-            .iter_mut()
-            .for_each(|item| {
-                // If the index for the current item is 0
-                if item.as_mut().unwrap().index == 0 {
-                    // Set it to the index of the accessory we received
-                    item.as_mut().unwrap().index = accessory.parent.index;
+            .iter_mut() 
+            .for_each(|curr_acc| { // Go through every entry in the array.
+                // Grab the AccessoryData at that index in the XML
+                if let Some (found) = accessories.s_list.list.items.get(curr_acc.index as usize) {
+                    // If an entry was found, check if the mask is similar and set the index to 0 if it is
+                    if accessory.mask == found.mask {
+                        curr_acc.index = 0;
+                    }
                 }
             });
-    }
+
+        // Checks if index is within 0 and the array's len
+        if (0..this.unit_accessory_array.len()).contains(&index) {
+            // We can safely index in the array here because we already confirmed that we are within the acceptable indices for the array... I hope
+            this.unit_accessory_array[index].index = accessory.parent.index;
+        } else {
+            // If 0 is less than 0 or beyond the array's length
+            this.unit_accessory_array
+                .iter_mut()
+                .for_each(|item| {
+                    // If the index for the current item is 0
+                    if item.index == 0 {
+                        // Set it to the index of the accessory we received
+                        item.index = accessory.parent.index;
+                    }
+                });
+        }
+
+        true
+    })
 }
 
 #[unity::hook("App", "UnitAccessoryList", "IsExist")]
@@ -214,7 +178,7 @@ pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: 
             .any(|curr_acc| { // Confirms if any of the items in the array fulfills the condition.
                 // Grab the AccessoryData at that index in the XML if it's present, and if it is, compare the AIDs.
                 // Return false if the index is out of bounds OR the AIDs don't match
-                accessories.s_list.list.items.get(curr_acc.as_ref().unwrap().index as usize).is_some_and(|item| {
+                accessories.s_list.list.items.get(curr_acc.index as usize).is_some_and(|item| {
                     item.aid.get_string().unwrap() == accessory.aid.get_string().unwrap()
                 })
             })
@@ -225,10 +189,12 @@ pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: 
 pub fn unitaccessorylist_ctor_hook(this: &mut UnitAccessoryList, method_info: OptionalMethod,)
 {
     call_original!(this, method_info);
-    
+
     // Il2CppArray can be turned into a slice (https://doc.rust-lang.org/std/primitive.slice.html) and slices can be iterated (https://doc.rust-lang.org/std/iter/trait.Iterator.html) on, so we can just walk through every item in the array and manipulate them
-    this.unit_accessory_array.iter_mut().for_each(|entry| {
-        *entry = Some(UnitAccessory::instantiate().map(|acc| {acc.index = 0; acc}).unwrap()); 
+    println!("Array length: {}", this.unit_accessory_array.len());
+
+    this.unit_accessory_array.iter_mut().for_each(|item| {
+        *item = UnitAccessory::instantiate().map(|acc| {acc.index = 0 as i32; acc}).unwrap();
     });
 }
 
