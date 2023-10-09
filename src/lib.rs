@@ -100,6 +100,19 @@ pub fn onbuild_accessory_data_hook(this: &mut AccessoryData, method_info: Option
     }
 }
 
+#[unity::hook("App", "UnitAccessoryList", "CopyFrom")]
+pub fn copyfrom_accessory_data_hook(this: &mut UnitAccessoryList, list: &mut UnitAccessoryList, method_info: OptionalMethod) {
+    
+    let mut i = 0;
+    while i < this.unit_accessory_array.len()
+    {
+        this.unit_accessory_array[i].index = list.unit_accessory_array[i].index;
+        i += 1;
+    }
+
+    
+}
+
 //Currently not compiling
 //cannot borrow data in dereference of `Array<&unity::prelude::Il2CppObject<unit_accessory>>` as mutable
 
@@ -241,7 +254,7 @@ pub fn main() {
     }));
     
     
-    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook, unitaccessorylist_is_exist_hook, add_UnitAccessoryList_hook);
+    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, copyfrom_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook, unitaccessorylist_is_exist_hook, add_UnitAccessoryList_hook);
     skyline::patching::Patch::in_text(0x01f61c00).bytes(&[0x01, 0x02, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d70).bytes(&[0xDF, 0x3E, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d8c).bytes(&[0xDF, 0x42, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
