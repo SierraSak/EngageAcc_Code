@@ -198,6 +198,55 @@ pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: 
     })  
 }
 
+//#[unity::hook("App", "UnitAccessoryList", "Serialize")]
+//pub fn unitaccessorylist_serialize_hook(this: &mut UnitAccessoryList, stream: &MemoryStream, method_info: OptionalMethod,)
+//{
+    //Write an int in the stream.  Arguments are the stream itself (this), the int, and method_info
+    //stream.writeInt(stream, 0, 0x0)
+
+    //let mut i = 0;
+    //while i < this.unit_accessory_array.len()
+    //{
+        //It occurred to me that I don't actually know how to call existing Engage functions without hooking them.
+        //Call App.UnitAccessory$$Serialize(this.unit_accessory_array[i], stream, method_info)
+        //i += 1;
+    //}
+    //return;
+//}
+
+//#[unity::hook("App", "UnitAccessoryList", "Deserialize")]
+//pub fn unitaccessorylist_deserialize_hook(this: &mut UnitAccessoryList, stream: &MemoryStream, method_info: OptionalMethod,)
+//{
+    //Write an int in the stream.  Arguments are the stream itself (this), the int, and method_info
+    //stream.writeInt(stream, 0, 0x0)
+
+    //let mut i = 0;
+    //while i < this.unit_accessory_array.len()
+    //{
+        //this.unit_accessory_array[i].index = 0;
+        //i += 1;
+    //}
+    //value = stream.buffer;
+    //start_index = stream.position;
+    //if (start_index + 15) <= value.len()
+    //{
+        //Point of this unknown?  Wonder if IS copypasta'd too hard or if I'm misreading the code.
+        //let new_acc_list = *(System.BitConverter$$ToInt32(value,start_index,0x0));
+
+        //stream.position += 4;
+
+        //i = 0;
+        //while i < this.unit_accessory_array.len()
+        //{
+            //Another of these...  I'm pretty sure it reads and returns accessory data from the save, and automatically adjusts stream.position.
+            //this.unit_accessory_array[i].index = app.stream.ReadAccessory(stream).index;
+            //i += 1;
+        //}
+    //}
+    //}
+    //return;
+//}
+
 #[unity::hook("App", "UnitAccessoryList", ".ctor")]
 pub fn unitaccessorylist_ctor_hook(this: &mut UnitAccessoryList, method_info: OptionalMethod,)
 {
