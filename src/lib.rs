@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 
 use engage::gamedata::{StructDataGeneric, StructData, StructDataStaticFields};
 use unity::prelude::*;
+use unity::engine::Sprite;
 
 #[unity::class("App", "StructBase")]
 pub struct StructBase {
@@ -68,6 +69,37 @@ pub struct UnitAccessoryList {
 pub struct UnitAccessory {
     pub index: i32,
 }
+
+#[unity::class("App", "SpriteAtlasManager")]
+pub struct SpriteAtlasManager {
+    pub handle: i32,
+    pub spriteatlas: i32,
+    pub cachetable: i32,
+}
+
+#[unity::class("App", "GameIcon")]
+#[static_fields(GameIconStaticFields)]
+pub struct GameIcon { }
+
+pub struct GameIconStaticFields {
+    pub skill: SpriteAtlasManager,
+    pub item: SpriteAtlasManager,
+    pub efficacy: SpriteAtlasManager,
+    pub efficacy_outline: SpriteAtlasManager,
+    pub item_kinds: SpriteAtlasManager,
+    pub item_outline_kinds: SpriteAtlasManager,
+    pub god_symbol: SpriteAtlasManager,
+    pub god_ring: SpriteAtlasManager,
+    pub system: SpriteAtlasManager,
+    pub unit_icon_index: SpriteAtlasManager,
+    pub unit_icon_pallete: SpriteAtlasManager,
+}
+
+#[unity::from_offset("App", "GameIcon", "TryGetSystem")]
+extern "C" fn sprite_trygetsystem(iconName: &'static Il2CppString, method_info: OptionalMethod) -> &Sprite;
+
+#[unity::from_offset("App", "GameIcon", "TryGet")]
+extern "C" fn sprite_tryget(this: SpriteAtlasManager, name: &'static Il2CppString, method_info: OptionalMethod) -> &Sprite;
 
 
 #[unity::hook("App", "UnitAccessoryList", "get_Count")]
@@ -198,6 +230,8 @@ pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: 
     })  
 }
 
+
+
 //#[unity::hook("App", "UnitAccessoryList", "Serialize")]
 //pub fn unitaccessorylist_serialize_hook(this: &mut UnitAccessoryList, stream: &MemoryStream, method_info: OptionalMethod,)
 //{
@@ -246,6 +280,27 @@ pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: 
     //}
     //return;
 //}
+
+#[unity::hook("App", "GameIcon", "TryGetAccessoryKinds")]
+pub fn gameicon_accessorykinds(accessoryKinds: i32, method_info: OptionalMethod,) -> &'static Sprite
+{
+    let mut i = "Face";
+    //Tilde's Custom icon code doesn't currently support System sprites, so I have temporarily commented the custom ones out for the sake of
+    //looking nice ingame.
+    match accessoryKinds{
+        0 => i = "Clothes",
+        //1 => i = "Head",
+        2 => i = "Face",
+        //3 => i = "Hand",
+        //5 => i = "Back",
+        //6 => i = "Dye",
+        //7 => i = "Style",
+        _=> i = "Face",
+    }
+    let spriteim = unsafe{sprite_trygetsystem(i.into(), method_info)};
+
+    return spriteim;
+}
 
 #[unity::hook("App", "UnitAccessoryList", ".ctor")]
 pub fn unitaccessorylist_ctor_hook(this: &mut UnitAccessoryList, method_info: OptionalMethod,)
@@ -303,7 +358,7 @@ pub fn main() {
     }));
     
     
-    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, copyfrom_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook, unitaccessorylist_is_exist_hook, add_UnitAccessoryList_hook);
+    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, gameicon_accessorykinds, copyfrom_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook, unitaccessorylist_is_exist_hook, add_UnitAccessoryList_hook);
     skyline::patching::Patch::in_text(0x01f61c00).bytes(&[0x01, 0x02, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d70).bytes(&[0xDF, 0x3E, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d8c).bytes(&[0xDF, 0x42, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
