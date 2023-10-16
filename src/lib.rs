@@ -12,6 +12,14 @@ pub struct StructBase {
     key: &'static Il2CppString,
 }
 
+
+#[unity::class("App", "Stream")]
+pub struct Stream {
+    buffer: &'static mut Il2CppArray<u8>,
+    position: i32,
+    stack: *const u8 ,
+}
+
 #[unity::class("App", "AccessoryData")]
 pub struct AccessoryData {
     pub parent: StructBaseFields,
@@ -100,6 +108,18 @@ extern "C" fn sprite_trygetsystem(iconName: &'static Il2CppString, method_info: 
 
 #[unity::from_offset("App", "GameIcon", "TryGet")]
 extern "C" fn sprite_tryget(this: SpriteAtlasManager, name: &'static Il2CppString, method_info: OptionalMethod) -> &Sprite;
+
+#[unity::from_offset("App", "UnitAccessory", "Serialize")]
+extern "C" fn accessory_serialize(this: &mut UnitAccessory, stream: &mut Stream, method_info: OptionalMethod);
+
+#[unity::from_offset("App", "UnitAccessory", "Deserialize")]
+extern "C" fn accessory_deserialize(this: &mut UnitAccessory, stream: &mut Stream, method_info: OptionalMethod);
+
+#[unity::from_offset("App", "Stream", "WriteInt")]
+extern "C" fn stream_write_int(this: &mut Stream, data: i32, method_info: OptionalMethod);
+
+#[unity::from_offset("App", "Stream", "ReadInt")]
+extern "C" fn stream_read_int(this: &mut Stream, method_info: OptionalMethod) -> i32;
 
 
 #[unity::hook("App", "UnitAccessoryList", "get_Count")]
@@ -232,54 +252,50 @@ pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: 
 
 
 
-//#[unity::hook("App", "UnitAccessoryList", "Serialize")]
-//pub fn unitaccessorylist_serialize_hook(this: &mut UnitAccessoryList, stream: &MemoryStream, method_info: OptionalMethod,)
-//{
-    //Write an int in the stream.  Arguments are the stream itself (this), the int, and method_info
-    //stream.writeInt(stream, 0, 0x0)
+#[unity::hook("App", "UnitAccessoryList", "Serialize")]
+pub fn unitaccessorylist_serialize_hook(this: &mut UnitAccessoryList, stream: &mut Stream, method_info: OptionalMethod,)
+{
+    unsafe{stream_write_int(stream, 1, method_info)};
 
-    //let mut i = 0;
-    //while i < this.unit_accessory_array.len()
-    //{
-        //It occurred to me that I don't actually know how to call existing Engage functions without hooking them.
-        //Call App.UnitAccessory$$Serialize(this.unit_accessory_array[i], stream, method_info)
-        //i += 1;
-    //}
-    //return;
-//}
+    this.unit_accessory_array
+            .iter_mut()
+            .for_each(|curr_acc| {
+                unsafe{accessory_serialize(*curr_acc, stream, method_info)};
+            });
+    return;
+}
 
-//#[unity::hook("App", "UnitAccessoryList", "Deserialize")]
-//pub fn unitaccessorylist_deserialize_hook(this: &mut UnitAccessoryList, stream: &MemoryStream, method_info: OptionalMethod,)
-//{
-    //Write an int in the stream.  Arguments are the stream itself (this), the int, and method_info
-    //stream.writeInt(stream, 0, 0x0)
+#[unity::hook("App", "UnitAccessoryList", "Deserialize")]
+pub fn unitaccessorylist_deserialize_hook(this: &mut UnitAccessoryList, stream: &mut Stream, method_info: OptionalMethod,)
+{    
+    let mut version_check = 0;
+    this.unit_accessory_array
+            .iter_mut()
+            .for_each(|curr_acc| {
+                curr_acc.index == 0;
+            });
+    if (stream.position + 4) <= stream.buffer.len() as _
+    {
+        version_check = unsafe{stream_read_int(stream, method_info)};
+    }
 
-    //let mut i = 0;
-    //while i < this.unit_accessory_array.len()
-    //{
-        //this.unit_accessory_array[i].index = 0;
-        //i += 1;
-    //}
-    //value = stream.buffer;
-    //start_index = stream.position;
-    //if (start_index + 15) <= value.len()
-    //{
-        //Point of this unknown?  Wonder if IS copypasta'd too hard or if I'm misreading the code.
-        //let new_acc_list = *(System.BitConverter$$ToInt32(value,start_index,0x0));
-
-        //stream.position += 4;
-
-        //i = 0;
-        //while i < this.unit_accessory_array.len()
-        //{
-            //Another of these...  I'm pretty sure it reads and returns accessory data from the save, and automatically adjusts stream.position.
-            //this.unit_accessory_array[i].index = app.stream.ReadAccessory(stream).index;
-            //i += 1;
-        //}
-    //}
-    //}
-    //return;
-//}
+    if version_check != 0{
+        this.unit_accessory_array
+                .iter_mut()
+                .for_each(|curr_acc| {
+                    unsafe{accessory_deserialize(*curr_acc, stream, method_info)};
+                });
+    }
+    else{
+        this.unit_accessory_array[..4]
+                .iter_mut()
+                .for_each(|curr_acc| {
+                    unsafe{accessory_deserialize(*curr_acc, stream, method_info)};
+                });
+    }
+    
+    return;
+}
 
 #[unity::hook("App", "GameIcon", "TryGetAccessoryKinds")]
 pub fn gameicon_accessorykinds(accessoryKinds: i32, method_info: OptionalMethod,) -> &'static Sprite
@@ -289,13 +305,13 @@ pub fn gameicon_accessorykinds(accessoryKinds: i32, method_info: OptionalMethod,
     //looking nice ingame.
     match accessoryKinds{
         0 => i = "Clothes",
-        //1 => i = "Head",
+        1 => i = "Rabbit",
         2 => i = "Face",
-        //3 => i = "Hand",
+        3 => i = "Hand",
         //5 => i = "Back",
         //6 => i = "Dye",
         //7 => i = "Style",
-        _=> i = "Face",
+        _=> i = "Gift",
     }
     let spriteim = unsafe{sprite_trygetsystem(i.into(), method_info)};
 
@@ -358,7 +374,7 @@ pub fn main() {
     }));
     
     
-    skyline::install_hooks!(unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, gameicon_accessorykinds, copyfrom_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook, unitaccessorylist_is_exist_hook, add_UnitAccessoryList_hook);
+    skyline::install_hooks!(unitaccessorylist_serialize_hook, unitaccessorylist_deserialize_hook, unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, gameicon_accessorykinds, copyfrom_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook, unitaccessorylist_is_exist_hook, add_UnitAccessoryList_hook);
     skyline::patching::Patch::in_text(0x01f61c00).bytes(&[0x01, 0x02, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d70).bytes(&[0xDF, 0x3E, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d8c).bytes(&[0xDF, 0x42, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
