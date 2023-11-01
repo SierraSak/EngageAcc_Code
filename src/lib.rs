@@ -155,14 +155,12 @@ pub fn onbuild_accessory_data_hook(this: &mut AccessoryData, method_info: Option
 #[unity::hook("App", "UnitAccessoryList", "CopyFrom")]
 pub fn copyfrom_accessory_data_hook(this: &mut UnitAccessoryList, list: &mut UnitAccessoryList, method_info: OptionalMethod) {
     
-    let mut i = 0;
-    while i < this.unit_accessory_array.len()
-    {
-        this.unit_accessory_array[i].index = list.unit_accessory_array[i].index;
-        i += 1;
-    }
-
-    
+    this.unit_accessory_array
+            .iter_mut()
+            .zip(list.unit_accessory_array.iter_mut())
+            .for_each(|(dest, src)| {
+                dest.index = src.index;
+            });
 }
 
 //Currently not compiling
@@ -305,13 +303,13 @@ pub fn gameicon_accessorykinds(accessoryKinds: i32, method_info: OptionalMethod,
     //looking nice ingame.
     match accessoryKinds{
         0 => i = "Clothes",
-        1 => i = "Rabbit",
-        2 => i = "Face",
-        3 => i = "Hand",
+        //1 => i = "Head",
+        //2 => i = "Face",
+        //3 => i = "Hand",
         //5 => i = "Back",
         //6 => i = "Dye",
         //7 => i = "Style",
-        _=> i = "Gift",
+        _=> i = "Face",
     }
     let spriteim = unsafe{sprite_trygetsystem(i.into(), method_info)};
 
