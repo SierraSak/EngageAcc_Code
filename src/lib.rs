@@ -41,6 +41,7 @@ pub fn unitaccessorylist_get_count(_this: &mut UnitAccessoryList, _method_info: 
 
 #[unity::hook("App", "AccessoryData", "OnBuild")]
 pub fn accessorydata_on_build_hook(this: &mut AccessoryData, method_info: OptionalMethod) {
+    //Takes the Mask value from the accessory's XML data and assigns it a Kind.
     call_original!(this, method_info);
 
     if this.mask > 8
@@ -65,6 +66,7 @@ pub fn accessorydata_on_build_hook(this: &mut AccessoryData, method_info: Option
 
 #[unity::hook("App", "UnitAccessoryList", "CopyFrom")]
 pub fn unitaccessorylist_copyfrom_hook(this: &mut UnitAccessoryList, list: &mut UnitAccessoryList, _method_info: OptionalMethod) {
+    //Copies the contest of one accessory list to another.
     this.unit_accessory_array
         .iter_mut()
         .zip(list.unit_accessory_array.iter_mut())
@@ -75,11 +77,13 @@ pub fn unitaccessorylist_copyfrom_hook(this: &mut UnitAccessoryList, list: &mut 
 
 #[unity::hook("App", "UnitAccessoryList", "Clear")]
 pub fn unitaccessorylist_clear_hook(this: &mut UnitAccessoryList, _method_info: OptionalMethod) {
+    //Removes every accessory in an Accessory List.
     this.unit_accessory_array.iter_mut().for_each(|acc| acc.index = 0);
 }
 
 #[skyline::hook(offset = 0x1f620a0)]
 pub fn unitaccessorylist_add_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, index: usize, _method_info: OptionalMethod) -> bool {
+    // Index is always, ALWAYS, the accessory's Kind, which is calculated based on the "Mask" value in it's XML Data during the "OnBuild" function.
     // Ray: I have some clue why this is done but I hope you do too because I'll forget.
 
     let accessories = AccessoryData::get_list().expect("Couldn't reach AccessoryData List");
