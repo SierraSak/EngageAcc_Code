@@ -173,19 +173,37 @@ pub fn gameicon_try_get_accessory_kinds_hook(accessory_kinds: i32, _method_info:
     let mut i = "Face";
     //Tilde's Custom icon code doesn't currently support System sprites, so I have temporarily commented the custom ones out for the sake of
     //looking nice ingame.
-    match accessory_kinds {
-        0 => i = "Clothes",
-        //1 => i = "Head",
-        //2 => i = "Face",
-        //3 => i = "Hand",
-        //5 => i = "Back",
-        //6 => i = "Dye",
-        //7 => i = "Style",
-        _=> i = "Face",
+    if accessory_kinds > 3 {
+        match accessory_kinds {
+            5 => i = "sd:/engage/mods/ExpandedAccessorySlots/Back.png",
+            6 => i = "sd:/engage/mods/ExpandedAccessorySlots/Dye.png",
+            7 => i = "sd:/engage/mods/ExpandedAccessorySlots/Style.png",
+            _=> i = "sd:/engage/mods/ExpandedAccessorySlots/Face.png",
+        }
+        // Confirm this code actually works properly at some point.  :)
+        let texture_png = std::fs::read(i).unwrap();
+        let array = Il2CppArray::from_slice(texture_png).unwrap();
+        
+        let new_texture = Texture2D::new(48, 48);
+        
+        if !ImageConversion::load_image(new_texture, array) {
+            panic!("Could not load the job icon for '{}'.\n\nMake sure it is a PNG file with a dimension of 48x48 pixels", path);
+        }
+        
+        new_texture.set_filter_mode(FilterMode::Point);
+        
+        let rect = Rect::new(0.0, 0.0, 48.0, 48.0);
+        let pivot = Vector2::new(0.5, 0.5);
+        
+        let sprite = Sprite::create2(new_texture, rect, pivot, 100.0, 1, SpriteMeshType::Tight);
+        return sprite;
     }
-    let spriteim = GameIcon::try_get_system(i).expect("Couldn't get sprite for AccessoryKind");
+    else
+    {
+        return call_original!(accessory_kinds, method_info);
+    }
 
-    return spriteim;
+    
 }
 
 #[unity::hook("App", "UnitAccessoryList", ".ctor")]
