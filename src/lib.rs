@@ -96,7 +96,7 @@ pub fn unitaccessorylist_add_hook(this: &mut UnitAccessoryList, accessory: Optio
         }
 
         this.unit_accessory_array
-            .get(index)
+            .get_mut(index)
             .map(|entry| entry.index = accessory.parent.index)
             .expect("AccessoryKind goes beyond the expected range");
 
