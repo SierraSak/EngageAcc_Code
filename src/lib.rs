@@ -1,53 +1,19 @@
 #![feature(lazy_cell, ptr_sub_ptr)]
 use std::cmp::Ordering;
 
-use engage::gamedata::{StructDataGeneric, StructData, StructDataStaticFields};
 use unity::prelude::*;
 use unity::engine::Sprite;
 
-#[unity::class("App", "StructBase")]
-pub struct StructBase {
-    index: i32,
-    hash: i32,
-    key: &'static Il2CppString,
-}
-
-
-#[unity::class("App", "Stream")]
-pub struct Stream {
-    buffer: &'static mut Il2CppArray<u8>,
-    position: i32,
-    stack: *const u8 ,
-}
-
-#[unity::class("App", "AccessoryData")]
-pub struct AccessoryData {
-    pub parent: StructBaseFields,
-    pub aid: &'static Il2CppString,
-    pub name: &'static Il2CppString,
-    pub help: &'static Il2CppString,
-    pub name_m: &'static Il2CppString,
-    pub help_m: &'static Il2CppString,
-    pub name_f: &'static Il2CppString,
-    pub help_f: &'static Il2CppString,
-    pub first: bool,
-    pub amiibo: bool,
-    pub condition_cid: &'static Il2CppString,
-    pub condition_gender: i32,
-    pub condition_skills: &'static [Il2CppString; 0],
-    pub gid: &'static Il2CppString,
-    pub asset: &'static Il2CppString,
-    pub price: i32,
-    pub iron: i32,
-    pub steel: i32,
-    pub silver: i32,
-    pub mask: i32,
-    pub kind: i32,
-    pub god_data: u64,
-    pub flag_name: &'static Il2CppString,
-    
-    // ...
-}
+use engage::{
+    stream::Stream,
+    gameicon::GameIcon,
+    gamedata::{
+        accessory::AccessoryData, unit::{
+            UnitAccessory,
+            UnitAccessoryList
+        }, Gamedata
+    },
+};
 
 // Due to how you use the enum, let's not use these for now
 #[repr(i32)]
@@ -68,68 +34,13 @@ pub enum AccessoryDataKinds {
     Back = 3,
 }
 
-#[unity::class("App", "UnitAccessoryList")]
-pub struct UnitAccessoryList {
-    pub unit_accessory_array: &'static mut Il2CppArray<&'static mut UnitAccessory>
-}
-
-#[unity::class("App", "UnitAccessory")]
-pub struct UnitAccessory {
-    pub index: i32,
-}
-
-#[unity::class("App", "SpriteAtlasManager")]
-pub struct SpriteAtlasManager {
-    pub handle: i32,
-    pub spriteatlas: i32,
-    pub cachetable: i32,
-}
-
-#[unity::class("App", "GameIcon")]
-#[static_fields(GameIconStaticFields)]
-pub struct GameIcon { }
-
-pub struct GameIconStaticFields {
-    pub skill: SpriteAtlasManager,
-    pub item: SpriteAtlasManager,
-    pub efficacy: SpriteAtlasManager,
-    pub efficacy_outline: SpriteAtlasManager,
-    pub item_kinds: SpriteAtlasManager,
-    pub item_outline_kinds: SpriteAtlasManager,
-    pub god_symbol: SpriteAtlasManager,
-    pub god_ring: SpriteAtlasManager,
-    pub system: SpriteAtlasManager,
-    pub unit_icon_index: SpriteAtlasManager,
-    pub unit_icon_pallete: SpriteAtlasManager,
-}
-
-#[unity::from_offset("App", "GameIcon", "TryGetSystem")]
-extern "C" fn sprite_trygetsystem(iconName: &'static Il2CppString, method_info: OptionalMethod) -> &Sprite;
-
-#[unity::from_offset("App", "GameIcon", "TryGet")]
-extern "C" fn sprite_tryget(this: SpriteAtlasManager, name: &'static Il2CppString, method_info: OptionalMethod) -> &Sprite;
-
-#[unity::from_offset("App", "UnitAccessory", "Serialize")]
-extern "C" fn accessory_serialize(this: &mut UnitAccessory, stream: &mut Stream, method_info: OptionalMethod);
-
-#[unity::from_offset("App", "UnitAccessory", "Deserialize")]
-extern "C" fn accessory_deserialize(this: &mut UnitAccessory, stream: &mut Stream, method_info: OptionalMethod);
-
-#[unity::from_offset("App", "Stream", "WriteInt")]
-extern "C" fn stream_write_int(this: &mut Stream, data: i32, method_info: OptionalMethod);
-
-#[unity::from_offset("App", "Stream", "ReadInt")]
-extern "C" fn stream_read_int(this: &mut Stream, method_info: OptionalMethod) -> i32;
-
-
 #[unity::hook("App", "UnitAccessoryList", "get_Count")]
-pub fn app_unitaccessorylist_getcount(this: &mut UnitAccessoryList, method_info: OptionalMethod) -> i32 {
+pub fn unitaccessorylist_get_count(_this: &mut UnitAccessoryList, _method_info: OptionalMethod) -> i32 {
     return 15;
 }
 
-
 #[unity::hook("App", "AccessoryData", "OnBuild")]
-pub fn onbuild_accessory_data_hook(this: &mut AccessoryData, method_info: OptionalMethod) {
+pub fn accessorydata_on_build_hook(this: &mut AccessoryData, method_info: OptionalMethod) {
     call_original!(this, method_info);
 
     if this.mask > 8
@@ -153,155 +64,122 @@ pub fn onbuild_accessory_data_hook(this: &mut AccessoryData, method_info: Option
 }
 
 #[unity::hook("App", "UnitAccessoryList", "CopyFrom")]
-pub fn copyfrom_accessory_data_hook(this: &mut UnitAccessoryList, list: &mut UnitAccessoryList, method_info: OptionalMethod) {
-    
+pub fn unitaccessorylist_copyfrom_hook(this: &mut UnitAccessoryList, list: &mut UnitAccessoryList, _method_info: OptionalMethod) {
     this.unit_accessory_array
-            .iter_mut()
-            .zip(list.unit_accessory_array.iter_mut())
-            .for_each(|(dest, src)| {
-                dest.index = src.index;
-            });
+        .iter_mut()
+        .zip(list.unit_accessory_array.iter_mut())
+        .for_each(|(dest, src)| {
+            dest.index = src.index;
+        });
 }
 
-//Currently not compiling
-//cannot borrow data in dereference of `Array<&unity::prelude::Il2CppObject<unit_accessory>>` as mutable
-
-// You did not specify in UnitAccessoryList that the content of the array can be mut(ated), so Rust stopped you
 #[unity::hook("App", "UnitAccessoryList", "Clear")]
-pub fn clear_UnitAccessoryList_hook(this: &mut UnitAccessoryList, method_info: OptionalMethod,)
-{
-   //call_original!(this, method_info);
-
-    // OLD
-    //    let mut i = 0;
-    //    while i < this.unit_accessory_array.len()
-    //    {
-    //        this.unit_accessory_array[i].index = 0;
-    //        i += 1;
-    //    }
-
-    // NEW
+pub fn unitaccessorylist_clear_hook(this: &mut UnitAccessoryList, _method_info: OptionalMethod) {
     this.unit_accessory_array.iter_mut().for_each(|acc| acc.index = 0);
 }
 
 #[skyline::hook(offset = 0x1f620a0)]
-pub fn add_UnitAccessoryList_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, index: usize, method_info: OptionalMethod,) -> bool
-{
-    accessory.is_some_and(|accessory| {
-        let structdata: &Il2CppClass = get_generic_class!(StructDataGeneric<AccessoryData>).unwrap();
-        let accessory_table = Il2CppObject::<StructData>::from_class(structdata).unwrap();
-        let accessories = accessory_table.get_class().get_static_fields::<StructDataStaticFields<AccessoryData>>();
+pub fn unitaccessorylist_add_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, index: usize, _method_info: OptionalMethod) -> bool {
+    // Ray: I have no clue why this is done so I hope you do.
 
-        this.unit_accessory_array
-            .iter_mut() 
-            .for_each(|curr_acc| { // Go through every entry in the array.
-                // Grab the AccessoryData at that index in the XML
-                if let Some (found) = accessories.s_list.list.items.get(curr_acc.index as usize) {
-                    // If an entry was found, check if the mask is similar and set the index to 0 if it is
-                    if accessory.mask == found.mask {
-                        curr_acc.index = 0;
-                    }
+    let accessories = AccessoryData::get_list().expect("Couldn't reach AccessoryData List");
+
+    if let Some(accessory) = accessory {
+        for curr_acc in this.unit_accessory_array.iter_mut() { // Go through every entry in the array.
+            // Grab the AccessoryData at that index in the XML
+            if let Some(found) = accessories.get(curr_acc.index as usize) {
+                // If an entry was found, check if the mask is similar and set the index to 0 if it is
+                if accessory.mask == found.mask {
+                    curr_acc.index = 0;
                 }
-            });
+            }
+        }
 
-        // Checks if index is within 0 and the array's len
-        if (0..this.unit_accessory_array.len()).contains(&index) {
+        // Checks if index is within the array's length
+        if index > this.unit_accessory_array.len() {
+            // If index is beyond the array's length, this is a new accessory.
+            for item in this.unit_accessory_array.iter_mut() {
+                // If the index for the current item is 0
+                if item.index == 0 {
+                    // Set it to the index of the accessory we received
+                    item.index = accessory.parent.index;
+                }
+            }
+        } else {
             // We can safely index in the array here because we already confirmed that we are within the acceptable indices for the array... I hope
             this.unit_accessory_array[index].index = accessory.parent.index;
-        } else {
-            // If 0 is less than 0 or beyond the array's length
-            this.unit_accessory_array
-                .iter_mut()
-                .for_each(|item| {
-                    // If the index for the current item is 0
-                    if item.index == 0 {
-                        // Set it to the index of the accessory we received
-                        item.index = accessory.parent.index;
-                    }
-                });
         }
 
         true
-    })
+    } else {
+        false
+    }
 }
 
 #[unity::hook("App", "UnitAccessoryList", "IsExist")]
-pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, method_info: OptionalMethod) -> bool
-{
+pub fn unitaccessorylist_is_exist_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, _method_info: OptionalMethod) -> bool {
+    let accessories = AccessoryData::get_list().expect("Couldn't reach AccessoryData List");
+
     // This is your old "if accessory == 0x0 {}". In the context of talking with C, Rust allows you to use Option<> on a pointer to signify that it could be null.
     // That gives you plenty of fancy ways to check for null
     accessory.is_some_and(|accessory| {
-        let structdata: &Il2CppClass = get_generic_class!(StructDataGeneric<AccessoryData>).unwrap();
-        let accessory_table = Il2CppObject::<StructData>::from_class(structdata).unwrap();
-        let accessories = accessory_table.get_class().get_static_fields::<StructDataStaticFields<AccessoryData>>();
-
         // Looks for the AID of the provided accessory in the XML and return the index of the matching entry
         this.unit_accessory_array
             .iter() // Go through every entry in the array.
             .any(|curr_acc| { // Confirms if any of the items in the array fulfills the condition.
                 // Grab the AccessoryData at that index in the XML if it's present, and if it is, compare the AIDs.
                 // Return false if the index is out of bounds OR the AIDs don't match
-                accessories.s_list.list.items.get(curr_acc.index as usize).is_some_and(|item| {
+                accessories.get(curr_acc.index as usize).is_some_and(|item| {
                     item.aid.get_string().unwrap() == accessory.aid.get_string().unwrap()
                 })
             })
-    })  
+    })
 }
 
-
-
 #[unity::hook("App", "UnitAccessoryList", "Serialize")]
-pub fn unitaccessorylist_serialize_hook(this: &mut UnitAccessoryList, stream: &mut Stream, method_info: OptionalMethod,)
-{
-    unsafe{stream_write_int(stream, 1, method_info)};
+pub fn unitaccessorylist_serialize_hook(this: &mut UnitAccessoryList, stream: &mut Stream, _method_info: OptionalMethod) {
+    stream.write_int(1).expect("Could not write version number when serializing UnitAccessoryList");
 
+    // TODO: Simplify by calling serialize on the UnitAccessoryList directly
     this.unit_accessory_array
-            .iter_mut()
-            .for_each(|curr_acc| {
-                unsafe{accessory_serialize(*curr_acc, stream, method_info)};
-            });
-    return;
+        .iter_mut()
+        .for_each(|curr_acc| {
+            curr_acc.serialize(stream);
+        });
 }
 
 #[unity::hook("App", "UnitAccessoryList", "Deserialize")]
-pub fn unitaccessorylist_deserialize_hook(this: &mut UnitAccessoryList, stream: &mut Stream, method_info: OptionalMethod,)
-{    
-    let mut version_check = 0;
+pub fn unitaccessorylist_deserialize_hook(this: &mut UnitAccessoryList, stream: &mut Stream, _method_info: OptionalMethod) {
     this.unit_accessory_array
             .iter_mut()
             .for_each(|curr_acc| {
-                curr_acc.index == 0;
+                curr_acc.index = 0;
             });
-    if (stream.position + 4) <= stream.buffer.len() as _
-    {
-        version_check = unsafe{stream_read_int(stream, method_info)};
-    }
 
-    if version_check != 0{
-        this.unit_accessory_array
-                .iter_mut()
-                .for_each(|curr_acc| {
-                    unsafe{accessory_deserialize(*curr_acc, stream, method_info)};
-                });
+    let version_check = stream.read_int().expect("Could not read the version from the UnitAccessoryList block in the savefile");
+
+    if version_check > 0 {
+        // Deserializes as many items as there are in the array
+        this.unit_accessory_array.iter_mut()
+            .for_each(|curr_acc| {
+                curr_acc.deserialize(stream);
+            });
+    } else {
+        // Just deserializes the 4 original items
+        this.unit_accessory_array[..4].iter_mut()
+            .for_each(|curr_acc| {
+                curr_acc.deserialize(stream);
+            });
     }
-    else{
-        this.unit_accessory_array[..4]
-                .iter_mut()
-                .for_each(|curr_acc| {
-                    unsafe{accessory_deserialize(*curr_acc, stream, method_info)};
-                });
-    }
-    
-    return;
 }
 
 #[unity::hook("App", "GameIcon", "TryGetAccessoryKinds")]
-pub fn gameicon_accessorykinds(accessoryKinds: i32, method_info: OptionalMethod,) -> &'static Sprite
+pub fn gameicon_try_get_accessory_kinds_hook(accessory_kinds: i32, _method_info: OptionalMethod) -> &'static Sprite
 {
     let mut i = "Face";
     //Tilde's Custom icon code doesn't currently support System sprites, so I have temporarily commented the custom ones out for the sake of
     //looking nice ingame.
-    match accessoryKinds{
+    match accessory_kinds {
         0 => i = "Clothes",
         //1 => i = "Head",
         //2 => i = "Face",
@@ -311,7 +189,7 @@ pub fn gameicon_accessorykinds(accessoryKinds: i32, method_info: OptionalMethod,
         //7 => i = "Style",
         _=> i = "Face",
     }
-    let spriteim = unsafe{sprite_trygetsystem(i.into(), method_info)};
+    let spriteim = GameIcon::try_get_system(i).expect("Couldn't get sprite for AccessoryKind");
 
     return spriteim;
 }
@@ -322,17 +200,18 @@ pub fn unitaccessorylist_ctor_hook(this: &mut UnitAccessoryList, method_info: Op
     call_original!(this, method_info);
 
     // Il2CppArray can be turned into a slice (https://doc.rust-lang.org/std/primitive.slice.html) and slices can be iterated (https://doc.rust-lang.org/std/iter/trait.Iterator.html) on, so we can just walk through every item in the array and manipulate them
-    println!("Array length: {}", this.unit_accessory_array.len());
+    // println!("Array length: {}", this.unit_accessory_array.len());
 
-    this.unit_accessory_array.iter_mut().for_each(|item| {
-        *item = UnitAccessory::instantiate().map(|acc| {acc.index = 0 as i32; acc}).unwrap();
-    });
-}
-
-#[unity::hook("App", "AccessoryShopChangeRoot", "OnSelectMenuItem")]
-pub fn onselectmenuitem_accessory_data_hook(this: &(), accessory_data: &mut AccessoryData, method_info: OptionalMethod)
-{
-    call_original!(this, accessory_data, method_info)
+    this.unit_accessory_array
+        .iter_mut()
+        .for_each(|item| {
+            *item = UnitAccessory::instantiate()
+                .map(|acc| {
+                    acc.index = 0 as i32;
+                    acc
+                })
+                .unwrap();
+        });
 }
 
 #[skyline::main(name = "TestProject")]
@@ -372,7 +251,19 @@ pub fn main() {
     }));
     
     
-    skyline::install_hooks!(unitaccessorylist_serialize_hook, unitaccessorylist_deserialize_hook, unitaccessorylist_ctor_hook, onbuild_accessory_data_hook, gameicon_accessorykinds, copyfrom_accessory_data_hook, app_unitaccessorylist_getcount, clear_UnitAccessoryList_hook, unitaccessorylist_is_exist_hook, add_UnitAccessoryList_hook);
+    skyline::install_hooks!(
+        accessorydata_on_build_hook,
+        gameicon_try_get_accessory_kinds_hook,
+        unitaccessorylist_ctor_hook,
+        unitaccessorylist_serialize_hook,
+        unitaccessorylist_deserialize_hook,
+        unitaccessorylist_copyfrom_hook,
+        unitaccessorylist_get_count,
+        unitaccessorylist_clear_hook,
+        unitaccessorylist_is_exist_hook,
+        unitaccessorylist_add_hook
+    );
+
     skyline::patching::Patch::in_text(0x01f61c00).bytes(&[0x01, 0x02, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d70).bytes(&[0xDF, 0x3E, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d8c).bytes(&[0xDF, 0x42, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
