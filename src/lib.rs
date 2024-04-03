@@ -80,7 +80,7 @@ pub fn unitaccessorylist_clear_hook(this: &mut UnitAccessoryList, _method_info: 
 
 #[skyline::hook(offset = 0x1f620a0)]
 pub fn unitaccessorylist_add_hook(this: &mut UnitAccessoryList, accessory: Option<&mut AccessoryData>, index: usize, _method_info: OptionalMethod) -> bool {
-    // Ray: I have no clue why this is done so I hope you do.
+    // Ray: I have some clue why this is done but I hope you do too because I'll forget.
 
     let accessories = AccessoryData::get_list().expect("Couldn't reach AccessoryData List");
 
@@ -88,27 +88,17 @@ pub fn unitaccessorylist_add_hook(this: &mut UnitAccessoryList, accessory: Optio
         for curr_acc in this.unit_accessory_array.iter_mut() { // Go through every entry in the array.
             // Grab the AccessoryData at that index in the XML
             if let Some(found) = accessories.get(curr_acc.index as usize) {
-                // If an entry was found, check if the mask is similar and set the index to 0 if it is
+                // If an entry was found, check if the mask is similar and set the index to 0 if it is, to unequip other accessories that share the slot.
                 if accessory.mask == found.mask {
                     curr_acc.index = 0;
                 }
             }
         }
 
-        // Checks if index is within the array's length
-        if index > this.unit_accessory_array.len() {
-            // If index is beyond the array's length, this is a new accessory.
-            for item in this.unit_accessory_array.iter_mut() {
-                // If the index for the current item is 0
-                if item.index == 0 {
-                    // Set it to the index of the accessory we received
-                    item.index = accessory.parent.index;
-                }
-            }
-        } else {
-            // We can safely index in the array here because we already confirmed that we are within the acceptable indices for the array... I hope
-            this.unit_accessory_array[index].index = accessory.parent.index;
-        }
+        this.unit_accessory_array
+            .get(index)
+            .map(|entry| entry.index = accessory.parent.index)
+            .expect("AccessoryKind goes beyond the expected range");
 
         true
     } else {
