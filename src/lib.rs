@@ -178,7 +178,7 @@ pub fn gameicon_try_get_accessory_kinds_hook(accessory_kinds: i32, _method_info:
             5 => i = "sd:/engage/mods/ExpandedAccessorySlots/Back.png",
             6 => i = "sd:/engage/mods/ExpandedAccessorySlots/Dye.png",
             7 => i = "sd:/engage/mods/ExpandedAccessorySlots/Style.png",
-            _=> i = "sd:/engage/mods/ExpandedAccessorySlots/Face.png",
+            _=> i = "sd:/engage/mods/ExpandedAccessorySlots/Style.png",
         }
         // Confirm this code actually works properly at some point.  :)
         let texture_png = std::fs::read(i).unwrap();
