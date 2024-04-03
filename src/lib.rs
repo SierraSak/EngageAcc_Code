@@ -66,7 +66,7 @@ pub fn accessorydata_on_build_hook(this: &mut AccessoryData, method_info: Option
 
 #[unity::hook("App", "UnitAccessoryList", "CopyFrom")]
 pub fn unitaccessorylist_copyfrom_hook(this: &mut UnitAccessoryList, list: &mut UnitAccessoryList, _method_info: OptionalMethod) {
-    //Copies the contest of one accessory list to another.
+    //Copies the contents of one accessory list to another.
     this.unit_accessory_array
         .iter_mut()
         .zip(list.unit_accessory_array.iter_mut())
