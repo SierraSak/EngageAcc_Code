@@ -21,6 +21,18 @@ use engage::{
     },
 };
 
+use skyline::{
+    hook,
+    hooks::InlineCtx,
+};
+
+#[macro_export]
+macro_rules! reg_x {
+    ($ctx:ident, $no:expr) => {
+        unsafe { *$ctx.registers[$no].x.as_ref() }
+    };
+}
+
 // Due to how you use the enum, let's not use these for now
 #[repr(i32)]
 pub enum AccessoryDataMasks {
@@ -181,12 +193,14 @@ pub fn gameicon_try_get_accessory_kinds_hook(accessory_kinds: i32, _method_info:
     match accessory_kinds {
         0 => return GameIcon::try_get_system("Clothes").expect("Couldn't get sprite for AccessoryKind"),
         1 => i = "sd:/engage/mods/ExpandedAccessorySlots/Hat.png",
+        
         2 => return GameIcon::try_get_system("Face").expect("Couldn't get sprite for AccessoryKind"),
         3 => i = "sd:/engage/mods/ExpandedAccessorySlots/Back.png",
+        5 => i = "sd:/engage/mods/ExpandedAccessorySlots/BattleOutfit.png",
         6 => i = "sd:/engage/mods/ExpandedAccessorySlots/Dye.png",
         7 => i = "sd:/engage/mods/ExpandedAccessorySlots/Style.png",
         8 => i = "sd:/engage/mods/ExpandedAccessorySlots/Weapon.png",
-        _=> return GameIcon::try_get_system("Face").expect("Couldn't get sprite for AccessoryKind"),
+        _=>i = "sd:/engage/mods/ExpandedAccessorySlots/Placeholder.png",
     }
     // Confirm this code actually works properly at some point.
     let texture_png = std::fs::read(i).unwrap();
@@ -205,6 +219,23 @@ pub fn gameicon_try_get_accessory_kinds_hook(accessory_kinds: i32, _method_info:
     
     let sprite = Sprite::create2(new_texture, rect, pivot, 100.0, 1, SpriteMeshType::Tight);
     return sprite;   
+}
+
+#[skyline::hook(offset = 0x27b5eb0, inline)]
+fn accessorydetail_hook(ctx: &mut InlineCtx) {
+    let kind = reg_x!(ctx, 22) as usize;
+    let mut out_mid = reg_x!(ctx, 8) as *mut*const Il2CppString;
+
+    let mid = match kind {
+        5 => "MID_MENU_ACCESSORY_SHOP_PART_OUTFIT_BATTLE",
+        6 => "MID_MENU_ACCESSORY_SHOP_PART_DYE",
+        7 => "MID_MENU_ACCESSORY_SHOP_PART_STYLE",
+        8 => "MID_MENU_ACCESSORY_SHOP_PART_WEAPON",
+        _=> "MID_MENU_ACCESSORY_SHOP_PART_PLACEHOLDER",
+    };
+
+    unsafe{*out_mid = Il2CppString::new(mid) as *const _; }
+
 }
 
 #[unity::hook("App", "UnitAccessoryList", ".ctor")]
@@ -263,7 +294,8 @@ pub fn main() {
         );
     }));
     
-    
+    skyline::patching::Patch::in_text(0x027b5eb0).bytes(&[0x1F, 0x20, 0x03, 0xD5]).expect("Couldn’t patch that shit for some reasons");
+
     skyline::install_hooks!(
         accessorydata_on_build_hook,
         gameicon_try_get_accessory_kinds_hook,
@@ -274,12 +306,19 @@ pub fn main() {
         unitaccessorylist_get_count,
         unitaccessorylist_clear_hook,
         unitaccessorylist_is_exist_hook,
-        unitaccessorylist_add_hook
+        unitaccessorylist_add_hook,
+        accessorydetail_hook
     );
 
     skyline::patching::Patch::in_text(0x01f61c00).bytes(&[0x01, 0x02, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d70).bytes(&[0xDF, 0x3E, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d8c).bytes(&[0xDF, 0x42, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
+
+
+    
+
+    //skyline::patching::Patch::in_text(0x027b5e7c).bytes(&[0xDF, 0x02, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
+    //skyline::patching::Patch::in_text(0x027b5e80).bytes(&[0x21, 0x01, 0x00, 0x54]).expect("Couldn’t patch that shit for some reasons");
 
     //Patch Get_Count
     //skyline::patching::Patch::in_text(0x01f61b10).bytes(&[0xE0, 0x01, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
