@@ -58,7 +58,7 @@ pub enum AccessoryDataKinds {
 
 #[unity::hook("App", "UnitAccessoryList", "get_Count")]
 pub fn unitaccessorylist_get_count(_this: &mut UnitAccessoryList, _method_info: OptionalMethod) -> i32 {
-    return 15;
+    return 8;
 }
 
 #[unity::hook("App", "AccessoryData", "OnBuild")]
@@ -73,14 +73,6 @@ pub fn accessorydata_on_build_hook(this: &mut AccessoryData, method_info: Option
             32 => this.kind = 5,
             64 => this.kind = 6,
             128 => this.kind = 7,
-            256 => this.kind = 8,
-            512 => this.kind = 9,
-            1024 => this.kind = 10,
-            2048 => this.kind = 11,
-            4096 => this.kind = 12,
-            8192 => this.kind = 13,
-            16384 => this.kind = 14,
-            32768 => this.kind = 15,
             _=> this.kind = 1,
         }
     }
@@ -196,6 +188,12 @@ pub fn unitaccessorylist_deserialize_hook(this: &mut UnitAccessoryList, stream: 
             .for_each(|curr_acc| {
                 curr_acc.deserialize(stream);
             });
+        // Unequips all accessories this first load because apparently accessories 
+        // can get stuck equipped due to the Kinds being changed since the save was made.
+        this.unit_accessory_array[..4].iter_mut()
+            .for_each(|curr_acc| {
+                curr_acc.index = 0;
+            });
     }
 }
 
@@ -212,7 +210,6 @@ pub fn gameicon_try_get_accessory_kinds_hook(accessory_kinds: i32, _method_info:
         5 => "BattleOutfit.png",
         6 => "Dye.png",
         7 => "Style.png",
-        8 => "Weapon.png",
         _=> "Placeholder.png",
     };
 
@@ -250,7 +247,6 @@ fn accessorydetail_hook(ctx: &mut InlineCtx) {
         5 => "MID_MENU_ACCESSORY_SHOP_PART_OUTFIT_BATTLE",
         6 => "MID_MENU_ACCESSORY_SHOP_PART_DYE",
         7 => "MID_MENU_ACCESSORY_SHOP_PART_STYLE",
-        8 => "MID_MENU_ACCESSORY_SHOP_PART_WEAPON",
         _=> "MID_MENU_ACCESSORY_SHOP_PART_PLACEHOLDER",
     };
 
