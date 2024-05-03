@@ -26,6 +26,10 @@ use skyline::{
     hooks::InlineCtx,
 };
 
+use include_dir::{include_dir, Dir};
+
+static ICON_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources");
+
 #[macro_export]
 macro_rules! reg_x {
     ($ctx:ident, $no:expr) => {
@@ -117,10 +121,20 @@ pub fn unitaccessorylist_add_hook(this: &mut UnitAccessoryList, accessory: Optio
             }
         }
 
-        this.unit_accessory_array
-            .get_mut(index)
-            .map(|entry| entry.index = accessory.parent.index)
-            .expect("AccessoryKind goes beyond the expected range");
+        // this.unit_accessory_array
+        //     .get_mut(index)
+        //     .map(|entry| entry.index = accessory.parent.index)
+        //     .expect("AccessoryKind goes beyond the expected range");
+
+        if index > this.unit_accessory_array.len() {
+            for item in this.unit_accessory_array.iter_mut() {
+                if item.index == 0 {
+                    item.index = accessory.parent.index;
+                }
+            }
+        } else {
+            this.unit_accessory_array[index].index = accessory.parent.index;
+        }
 
         true
     } else {
@@ -188,22 +202,28 @@ pub fn unitaccessorylist_deserialize_hook(this: &mut UnitAccessoryList, stream: 
 #[unity::hook("App", "GameIcon", "TryGetAccessoryKinds")]
 pub fn gameicon_try_get_accessory_kinds_hook(accessory_kinds: i32, _method_info: OptionalMethod) -> &'static Sprite
 {
-    let mut i = "sd:/engage/mods/ExpandedAccessorySlots/Placeholder.png";
     //Do not use Kind 4.  The game reserves that one for Sommie accessories
-    match accessory_kinds {
+    let i = match accessory_kinds {
         0 => return GameIcon::try_get_system("Clothes").expect("Couldn't get sprite for AccessoryKind"),
-        1 => i = "sd:/engage/mods/ExpandedAccessorySlots/Hat.png",
+        1 => "Hat.png",
         
         2 => return GameIcon::try_get_system("Face").expect("Couldn't get sprite for AccessoryKind"),
-        3 => i = "sd:/engage/mods/ExpandedAccessorySlots/Back.png",
-        5 => i = "sd:/engage/mods/ExpandedAccessorySlots/BattleOutfit.png",
-        6 => i = "sd:/engage/mods/ExpandedAccessorySlots/Dye.png",
-        7 => i = "sd:/engage/mods/ExpandedAccessorySlots/Style.png",
-        8 => i = "sd:/engage/mods/ExpandedAccessorySlots/Weapon.png",
-        _=>i = "sd:/engage/mods/ExpandedAccessorySlots/Placeholder.png",
-    }
+        3 => "Back.png",
+        5 => "BattleOutfit.png",
+        6 => "Dye.png",
+        7 => "Style.png",
+        8 => "Weapon.png",
+        _=> "Placeholder.png",
+    };
+
     // Confirm this code actually works properly at some point.
-    let texture_png = std::fs::read(i).unwrap();
+    let texture_png = ICON_DIR.get_file(i)
+        .unwrap_or_else(|| {
+            panic!("Expanded Accessory Slot plugin could not find icon with name '{}'. Consider adding it to the 'resources' directory.", i);
+        })
+        .contents()
+        .to_owned(); // Necessary because Il2CppArray currently swaps the slice with its content
+
     let array = Il2CppArray::from_slice(texture_png).unwrap();
     
     let new_texture = Texture2D::new(48, 48);
