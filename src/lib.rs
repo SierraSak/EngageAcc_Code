@@ -296,7 +296,7 @@ pub fn main() {
         // Note the \0 at the end. This is needed because show_error is a C function and expects a C string.
         // This is actually just a result of bad old code and shouldn't be necessary most of the time.
         let err_msg = format!(
-            "Custom plugin has panicked at '{}' with the following message:\n{}\0",
+            "Extended Accessory Slots has panicked at '{}' with the following message:\n{}\0",
             location,
             msg
         );
@@ -326,7 +326,9 @@ pub fn main() {
         accessorydetail_hook
     );
 
+    //Patches the length of UnitAccessoryList in it's ctor function.
     skyline::patching::Patch::in_text(0x01f61c00).bytes(&[0x01, 0x02, 0x80, 0x52]).expect("Couldn’t patch that shit for some reasons");
+    
     skyline::patching::Patch::in_text(0x027b5d70).bytes(&[0xDF, 0x3E, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
     skyline::patching::Patch::in_text(0x027b5d8c).bytes(&[0xDF, 0x42, 0x00, 0x71]).expect("Couldn’t patch that shit for some reasons");
 
