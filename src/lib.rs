@@ -56,6 +56,7 @@ pub enum AccessoryDataKinds {
     Back = 3,
 }
 
+//Need to edit this for new accessory types to appear in the store.
 #[unity::hook("App", "UnitAccessoryList", "get_Count")]
 pub fn unitaccessorylist_get_count(_this: &mut UnitAccessoryList, _method_info: OptionalMethod) -> i32 {
     return 8;
